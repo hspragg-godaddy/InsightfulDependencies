@@ -8,6 +8,13 @@
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService
+                serviceInterface="com.github.hspragggodaddy.insightfuldependencies.service.FindUsageService"
+                serviceImplementation="com.github.hspragggodaddy.insightfuldependencies.service.FindUsageServiceImpl"
+        />
+    </extensions>
+
     <actions>
         <action id="FindUsagesBulk" class="com.github.hspragggodaddy.insightfuldependencies.actions.BulkFindUsagesAction">
             <add-to-group group-id="EditorPopupMenu"/>

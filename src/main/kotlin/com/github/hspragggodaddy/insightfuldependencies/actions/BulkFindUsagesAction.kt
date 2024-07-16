@@ -1,7 +1,7 @@
 package com.github.hspragggodaddy.insightfuldependencies.actions
 
+import com.github.hspragggodaddy.insightfuldependencies.service.FindUsageService
 import com.intellij.codeInsight.TargetElementUtil
-import com.intellij.find.FindManager
 import com.intellij.find.actions.FindUsagesAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -10,25 +10,23 @@ import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiJavaFile
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.usages.PsiElementUsageTarget
 import com.intellij.usages.UsageTarget
 import com.intellij.usages.UsageView
 import com.intellij.util.SmartList
 
 class BulkFindUsagesAction : FindUsagesAction() {
-    override fun update(event: AnActionEvent) {
-        println("Bulk Find Usages Update Event")
-        super.update(event)
-    }
 
     override fun actionPerformed(e: AnActionEvent) {
         println("Bulk Find Usages Action Performed Event")
         val project = e.getData(CommonDataKeys.PROJECT) ?: return
         PsiDocumentManager.getInstance(project).commitAllDocuments()
         val dataContext = e.dataContext
-        val elements = getAllElements(dataContext)
+        FindUsageService.getInstance().findUsages(getAllElements(dataContext), project, e)
+    }
+
+    private fun getAllElements(dataContext: DataContext): SmartList<PsiElement> {
+        val elements = getSelectedElements(dataContext)
         val directories = SmartList<PsiDirectory>()
         elements.forEach {
             if (it is PsiDirectory) {
@@ -40,30 +38,13 @@ class BulkFindUsagesAction : FindUsagesAction() {
             directories.addAll(current.subdirectories)
             elements.addAll(current.files)
         }
-        elements.forEach { element ->
-            FindManager.getInstance(element.project).findUsagesInScope(element, GlobalSearchScope.everythingScope(project))
-            if (element is PsiJavaFile) {
-
-            }
+        elements.removeAll {
+            it is PsiDirectory
         }
-
-        println("Bulk Find Usages Action Performed Event")
-
-
-//        PredefinedSearchScopeProvider.getInstance().getPredefinedScopesAsync(
-//            project,
-//            dataContext,
-//            true,
-//            false,
-//
-//        )
-//        val searchScope = FindUsagesOptions.findScopeByName(
-//            project, dataContext, FindSettings.getInstance().defaultScopeName
-//        )
-//        findUsages(toShowDialog(), project, searchScope, target)
+        return elements
     }
 
-    private fun getAllElements(dataContext: DataContext): SmartList<PsiElement> {
+    private fun getSelectedElements(dataContext: DataContext): SmartList<PsiElement> {
         val allTargets = SmartList<PsiElement>()
 
         val usageTargets: Array<out UsageTarget>? = dataContext.getData(UsageView.USAGE_TARGETS_KEY)
@@ -76,19 +57,16 @@ class BulkFindUsagesAction : FindUsagesAction() {
                     if (reference != null) {
                         allTargets.addAll(TargetElementUtil.getInstance().getTargetCandidates(reference))
                     }
-                }
-                catch (ignore: IndexNotReadyException) {
+                } catch (ignore: IndexNotReadyException) {
                 }
             }
-        }
-        else if (usageTargets.isNotEmpty()) {
+        } else if (usageTargets.isNotEmpty()) {
             val target: UsageTarget = usageTargets[0]
             if (target is PsiElementUsageTarget) {
                 target.element?.let {
                     allTargets += it
                 }
-            }
-            else {
+            } else {
                 println("Cannot get usage target of element: $target")
             }
         }
